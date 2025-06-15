@@ -42,6 +42,116 @@ function(input, output) {
     ) 
   })
   
+  # Regular function that converts pre-test to post-test, given LR
+  convert_pre_post <- function(Pr_pre, LR){
+    # Convert pretest-prob to pretest odds
+    odds_pre <- Pr_pre / (1-Pr_pre)
+    
+    # Find the posttest-odds
+    odds_post <- odds_pre * LR
+    
+    # Convert back to probability (specifically post-test probability)
+    odds_post / (1 + odds_post)
+    
+  }
+  
+  # ----------------------- For LR section -------------------------------------
+  # Reactive function to calculate positvie & negative LR
+  calc_LR <- reactive({
+    sens <- input$sensitivity2/100
+    spec <- input$specificity2/100
+    
+    list(pos = sens / (1-spec),
+         neg = (1-sens) / spec)
+  })
+  
+  # Reactive function to make data frame
+  makeDf2 <- reactive({
+    LR <- calc_LR()
+    
+    pre_test <- seq(1, 1000)/1000
+    post_positive <- convert_pre_post(pre_test, LR$pos)
+    post_negative <- convert_pre_post(pre_test, LR$neg)
+    
+    tibble(pretest = pre_test,
+           positive = post_positive,
+           negative = post_negative)
+    
+  })
+  
+  output$results <- renderPrint({
+    LR <- calc_LR()
+    
+    cat("LR+:", signif(LR$pos, 3), "\n")
+    cat("LR-:", signif(LR$neg, 3), "\n")
+    
+  })
+  
+  # output$probPlot <- renderPlot(width=400, height=400, res=120, {
+  #   
+  #   df <- makeDf2()
+  #   
+  #   p <- df %>%
+  #     as_tibble() %>%
+  #     pivot_longer(cols = c(positive, negative)) %>%
+  #     ggplot(aes(x=pretest)) +
+  #     geom_line(aes(y=value, group=name, color=name)) +
+  #     
+  #     scale_x_continuous(labels=scales::percent) +
+  #     # scale_x_log10(labels=scales::percent) +
+  #     scale_y_continuous(labels=scales::percent) +
+  #     theme_bw() +
+  #     theme(legend.position = "bottom") +
+  #     labs(x="Pre-test", y="Post-test", color="" )
+  #   
+  #   if (input$log_x_scale) {
+  #     p <- p + scale_x_log10(labels=scales::percent)
+  #   }
+  #   p
+  # })
+  
+  output$probPlotly <- renderPlotly({ 
+    df <- makeDf2()
+    
+    p <- df %>%
+      as_tibble() %>%
+      pivot_longer(cols = c(positive, negative)) %>%
+      ggplot(aes(x=pretest,
+                 text = paste("If test is ",name, ":<br>","Pre-test:", percent(pretest), "<br>Post-test:", percent(value)))) +
+      geom_line(aes(y=value, group=name, color=name)) +
+      
+      scale_x_continuous(labels=scales::percent) +
+      # scale_x_log10(labels=scales::percent) +
+      scale_y_continuous(labels=scales::percent) +
+      theme_bw() +
+      theme(legend.position = "bottom") +
+      labs(x="Pre-test", y="Post-test", color="" )
+    
+    if (input$log_x_scale) {
+      p <- p + scale_x_log10(labels=scales::percent)
+    }
+    # p
+    
+    ggplotly(p, tooltip = "text") %>%
+      layout(hovermode = "x unified")
+  }) 
+  
+  output$postTestTbl <- renderTable(rownames = F, {
+    df <- makeDf2()
+    
+    tibble(
+      `Pretest probability` = c("1 in 1000", "1 in 100", "1 in 50", "1 in 20",
+                                "1 in 10", "1 in 5", "1 in 2", "3 in 4", "9 in 10"),
+      pretest = c(1/1000, 1/100, 1/50, 1/20, 1/10, 1/5, 1/2, 3/4, 9/10)
+    ) %>%
+      inner_join(df, by="pretest") %>%
+      mutate(`Pretest probability` = str_glue("{`Pretest probability`} ({scales::percent(pretest)})"),
+             positive = scales::percent(positive),
+             negative = scales::percent(negative)) %>%
+      select(`Pretest probability`, `Post-test, if (+) result`=positive, `Post-test, if (-) result`=negative)
+  })
+  # ----------------------- END(LR section) -------------------------------------
+  
   
   output$TwoByTwo <- renderTable(rownames = T, {
     nums <- calcVals()

@@ -59,6 +59,36 @@ navbarPage(
     )
   ),
   
+  # ----------------------- SECOND PANEL ----------------------------------------
+  tabPanel("Likelihood ratios",
+           sidebarLayout(
+             
+             # Sidebar
+             sidebarPanel(
+               sliderInput("sensitivity2",label="Sensitivity:", min = 0, max = 100, post  = " %", value = 80),
+               sliderInput("specificity2",label="Specificity:", min = 0, max = 100, post  = " %", value = 95),
+               verbatimTextOutput("results")
+             ),
+
+             # Main panel
+             mainPanel(
+               fluidRow(
+                 column(12,
+                        # plotOutput("probPlot"),
+                        plotlyOutput("probPlotly"),
+                        checkboxInput("log_x_scale", "Use log10 scale for X-axis", value = FALSE)
+                        # verbatimTextOutput("print"),
+
+                 ),
+                 column(12, wellPanel(
+                   h4("Post-test probability"),
+                   tableOutput("postTestTbl")
+                 ))),
+
+             )
+           )
+  ),
+  
   tabPanel(
     "Sens & Spec",
     

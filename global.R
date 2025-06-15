@@ -2,6 +2,7 @@ library(shiny)
 library(tidyverse)
 library(ggthemes)
 library(scales)
+library(plotly)
 
 ppvHTML <- '<div style="display: inline-block">
 
